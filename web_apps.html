@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Web Applications</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: Georgia, "Times New Roman", serif;
+    color: #f1e9d2;
+    background:
+      radial-gradient(circle at 20% 15%, rgba(212,175,55,.20), transparent 40%),
+      radial-gradient(circle at 80% 85%, rgba(56,189,248,.20), transparent 45%),
+      linear-gradient(135deg, #0b1026 0%, #141b3d 55%, #1c2a4f 100%);
+    background-attachment: fixed;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 70px 14px 30px;
+  }
+  .card {
+    width: 100%;
+    max-width: 520px;
+    background: rgba(255,255,255,.07);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(212,175,55,.45);
+    border-radius: 16px;
+    padding: 34px 30px;
+    box-shadow: 0 12px 40px rgba(0,0,0,.45);
+    text-align: center;
+  }
+  h1 { margin: 0 0 6px; font-size: 30px; color: #e6c35c; letter-spacing: .5px; }
+  h2 { margin: 0 0 18px; font-size: 24px; color: #e6c35c; }
+  .rule { width: 80px; height: 2px; background: #d4af37; margin: 12px auto 22px; border: 0; }
+  p { line-height: 1.6; }
+  .muted { color: #b9b4a2; font-size: 14px; }
+  label { display: block; text-align: left; margin: 14px 0 6px; font-size: 14px; color: #e6c35c; letter-spacing: .5px; }
+  input[type=text], input[type=number] {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(212,175,55,.5);
+    background: rgba(8,12,35,.65);
+    color: #fff;
+    font-size: 16px;
+    font-family: inherit;
+  }
+  input:focus { outline: 2px solid #e6c35c; }
+  .btn {
+    display: inline-block;
+    margin-top: 22px;
+    padding: 12px 26px;
+    border: 1px solid #d4af37;
+    border-radius: 8px;
+    background: linear-gradient(180deg, #e6c35c, #b8932a);
+    color: #1a1405;
+    font-weight: bold;
+    font-size: 15px;
+    font-family: inherit;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .btn:hover { filter: brightness(1.12); }
+  .btn.ghost { background: transparent; color: #e6c35c; }
+  .menu { display: grid; gap: 14px; margin-top: 8px; }
+  .menu a {
+    display: block;
+    padding: 16px;
+    border: 1px solid rgba(212,175,55,.45);
+    border-radius: 10px;
+    text-decoration: none;
+    color: #f1e9d2;
+    background: rgba(255,255,255,.05);
+    text-align: left;
+    cursor: pointer;
+  }
+  .menu a:hover { background: rgba(212,175,55,.15); }
+  .menu b { color: #e6c35c; display: block; margin-bottom: 4px; }
+  .error { background: rgba(220,38,38,.2); border: 1px solid #ef4444; color: #fecaca; padding: 10px; border-radius: 8px; margin-bottom: 8px; }
+  .ok   { background: rgba(34,197,94,.16); border: 1px solid #22c55e; color: #bbf7d0; padding: 18px; border-radius: 10px; font-size: 20px; }
+  .deny { background: rgba(220,38,38,.16); border: 1px solid #ef4444; color: #fecaca; padding: 18px; border-radius: 10px; font-size: 20px; }
+  .time-badge {
+    position: fixed;
+    top: 14px; right: 16px;
+    padding: 8px 14px;
+    border: 1px solid #d4af37;
+    border-radius: 999px;
+    background: rgba(11,16,38,.85);
+    color: #e6c35c;
+    font-size: 13px;
+  }
+  .dt-grid { display: grid; gap: 12px; margin-top: 8px; }
+  .dt-item { border: 1px solid rgba(212,175,55,.45); border-radius: 10px; padding: 14px; background: rgba(255,255,255,.05); }
+  .dt-item small { display: block; color: #b9b4a2; letter-spacing: 1px; text-transform: uppercase; font-size: 11px; }
+  .dt-item span { font-size: 24px; color: #fff; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; text-align: left; }
+  td { padding: 10px 6px; border-bottom: 1px solid rgba(212,175,55,.25); }
+  td:first-child { color: #e6c35c; width: 45%; }
+</style>
+</head>
+<body>
+
+<div id="badge"></div>
+<div class="card" id="app"></div>
+
+<script>
+  // ---------- helpers ----------
+  var app = document.getElementById("app");
+  var badge = document.getElementById("badge");
+  var NAME_RE = /^[A-Za-z][A-Za-z .'-]*$/;
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function pad(n) { return n < 10 ? "0" + n : "" + n; }
+  function fmtTime(d) {
+    var h = d.getHours(), ap = h >= 12 ? "PM" : "AM";
+    h = h % 12 || 12;
+    return pad(h) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds()) + " " + ap;
+  }
+  var MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  var DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  function fmtDate(d) { return pad(d.getDate()) + " " + MONTHS[d.getMonth()] + " " + d.getFullYear(); }
+  function fmtDuration(sec) {
+    var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60, p = [];
+    if (h) p.push(h + " hour" + (h > 1 ? "s" : ""));
+    if (m) p.push(m + " minute" + (m > 1 ? "s" : ""));
+    p.push(s + " second" + (s !== 1 ? "s" : ""));
+    return p.join(", ");
+  }
+
+  // "Session" storage (cleared when the tab closes, like a PHP session)
+  function sget(k) { try { return sessionStorage.getItem(k); } catch (e) { return window["__" + k] || null; } }
+  function sset(k, v) { try { sessionStorage.setItem(k, v); } catch (e) { window["__" + k] = v; } }
+  function sdel(k) { try { sessionStorage.removeItem(k); } catch (e) {} window["__" + k] = null; }
+
+  function go(page) { location.hash = page; }
+  function show(html, badgeHtml) {
+    app.innerHTML = html;
+    badge.innerHTML = badgeHtml || "";
+  }
+
+  // ---------- Home ----------
+  function pageHome() {
+    show(
+      '<h1>Web Applications</h1><hr class="rule">' +
+      '<p class="muted">Choose an application to open</p>' +
+      '<div class="menu">' +
+        '<a onclick="go(\'a\')"><b>a. Session Hello Page</b>Enter your name, see your start time, log out and view usage duration.</a>' +
+        '<a onclick="go(\'b\')"><b>b. Date, Time &amp; Day</b>Shows the current date, time and day.</a>' +
+        '<a onclick="go(\'c\')"><b>c. Age Verification</b>Enter name and age to check whether you may enter the site.</a>' +
+      '</div>'
+    );
+  }
+
+  // ---------- (a) Hello page with session ----------
+  function pageA(errMsg) {
+    var name = sget("name"), start = sget("start");
+    if (name && start) {
+      var d = new Date(parseInt(start, 10));
+      show(
+        '<h2>Hello, ' + esc(name) + '!</h2><hr class="rule">' +
+        '<p>Welcome to your personal page. Your session is active.</p>' +
+        '<button class="btn" onclick="logout()">Logout</button>',
+        '<div class="time-badge">Started: ' + fmtTime(d) + ', ' + pad(d.getDate()) + ' ' + MONTHS[d.getMonth()].slice(0, 3) + ' ' + d.getFullYear() + '</div>'
+      );
+    } else {
+      show(
+        '<h2>Enter Your Name</h2><hr class="rule">' +
+        (errMsg ? '<div class="error">' + esc(errMsg) + '</div>' : '') +
+        '<form onsubmit="return login(event)">' +
+          '<label for="name">Name</label>' +
+          '<input type="text" id="name" placeholder="Your name" autofocus>' +
+          '<button class="btn" type="submit">Submit</button> ' +
+          '<a class="btn ghost" onclick="go(\'home\')">Home</a>' +
+        '</form>'
+      );
+    }
+  }
+  function login(e) {
+    e.preventDefault();
+    var name = document.getElementById("name").value.trim();
+    if (!name || !NAME_RE.test(name)) { pageA("Please enter a valid name (letters only)."); return false; }
+    sset("name", name);
+    sset("start", String(Date.now()));
+    pageA();
+    return false;
+  }
+  function logout() {
+    var name = sget("name"), start = parseInt(sget("start"), 10), end = Date.now();
+    var secs = Math.round((end - start) / 1000);
+    sdel("name"); sdel("start");
+    show(
+      '<h2>Thank You, ' + esc(name) + '!</h2><hr class="rule">' +
+      '<p>You have been logged out successfully.</p>' +
+      '<table>' +
+        '<tr><td>Login time</td><td>' + fmtTime(new Date(start)) + '</td></tr>' +
+        '<tr><td>Logout time</td><td>' + fmtTime(new Date(end)) + '</td></tr>' +
+        '<tr><td>Duration of usage</td><td>' + esc(fmtDuration(secs)) + '</td></tr>' +
+      '</table>' +
+      '<a class="btn" onclick="pageA()">Login Again</a> ' +
+      '<a class="btn ghost" onclick="go(\'home\')">Home</a>'
+    );
+  }
+
+  // ---------- (b) Date, Time and Day ----------
+  var clockTimer = null;
+  function pageB() {
+    show(
+      '<h2>Current Date, Time &amp; Day</h2><hr class="rule">' +
+      '<div class="dt-grid">' +
+        '<div class="dt-item"><small>Date</small><span id="dDate"></span></div>' +
+        '<div class="dt-item"><small>Time</small><span id="dTime"></span></div>' +
+        '<div class="dt-item"><small>Day</small><span id="dDay"></span></div>' +
+      '</div>' +
+      '<p class="muted">Updates every second</p>' +
+      '<a class="btn ghost" onclick="go(\'home\')">Home</a>'
+    );
+    function tick() {
+      var n = new Date();
+      document.getElementById("dDate").textContent = fmtDate(n);
+      document.getElementById("dTime").textContent = fmtTime(n);
+      document.getElementById("dDay").textContent = DAYS[n.getDay()];
+    }
+    tick();
+    clockTimer = setInterval(tick, 1000);
+  }
+
+  // ---------- (c) Age verification ----------
+  function pageC(errMsg) {
+    show(
+      '<h2>Age Verification</h2><hr class="rule">' +
+      (errMsg ? '<div class="error">' + esc(errMsg) + '</div>' : '') +
+      '<form onsubmit="return checkAge(event)">' +
+        '<label for="cname">Name</label>' +
+        '<input type="text" id="cname" placeholder="Your name">' +
+        '<label for="age">Age</label>' +
+        '<input type="number" id="age" min="0" max="120" placeholder="Your age">' +
+        '<button class="btn" type="submit">Submit</button> ' +
+        '<a class="btn ghost" onclick="go(\'home\')">Home</a>' +
+      '</form>'
+    );
+  }
+  function checkAge(e) {
+    e.preventDefault();
+    var name = document.getElementById("cname").value.trim();
+    var ageStr = document.getElementById("age").value.trim();
+    if (!name || !NAME_RE.test(name)) { pageC("Please enter a valid name (letters only)."); return false; }
+    if (!/^\d+$/.test(ageStr) || parseInt(ageStr, 10) > 120) { pageC("Please enter a valid age (0 - 120)."); return false; }
+    var age = parseInt(ageStr, 10);
+    show(
+      '<h2>Result</h2><hr class="rule">' +
+      (age >= 18
+        ? '<div class="ok">Welcome to this site, ' + esc(name) + '!</div>'
+        : '<div class="deny">Hello, ' + esc(name) + ', you are not authorized to visit the site.</div>') +
+      '<a class="btn" onclick="pageC()">Try Again</a> ' +
+      '<a class="btn ghost" onclick="go(\'home\')">Home</a>'
+    );
+    return false;
+  }
+
+  // ---------- Router ----------
+  function route() {
+    if (clockTimer) { clearInterval(clockTimer); clockTimer = null; }
+    var p = (location.hash || "#home").slice(1);
+    if (p === "a") pageA();
+    else if (p === "b") pageB();
+    else if (p === "c") pageC();
+    else pageHome();
+  }
+  window.addEventListener("hashchange", route);
+  route();
+</script>
+</body>
+</html>
